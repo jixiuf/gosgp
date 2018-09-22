@@ -36,10 +36,11 @@ func main() {
 
 	var (
 		opts = struct {
-			domain      string
-			length      int
-			lock_memory bool
-			sha         bool
+			master_password string
+			domain          string
+			length          int
+			lock_memory     bool
+			sha             bool
 		}{length: 10, lock_memory: true}
 		password, domain, generated []byte
 		sgp_md5                         = SGPMd5{md5: NewNonleakyMd5()}
@@ -48,6 +49,7 @@ func main() {
 		err                         error
 	)
 
+	flag.StringVar(&opts.master_password, "master_password", opts.master_password, "master_password")
 	flag.StringVar(&opts.domain, "domain", opts.domain, "domain")
 	flag.IntVar(&opts.length, "length", opts.length, "length")
 	flag.BoolVar(&opts.sha, "sha", opts.sha, "use sha512 instead of md5")
@@ -81,9 +83,15 @@ func main() {
 		}
 	}
 
-	fmt.Printf("password: ")
-	if password, err = terminal.ReadPassword(int(os.Stdin.Fd())); err != nil {
-		exit(1, err)
+	if len(opts.master_password) == 0 {
+		fmt.Printf("password: ")
+		if password, err = terminal.ReadPassword(int(os.Stdin.Fd())); err != nil {
+			exit(1, err)
+		}
+
+	} else {
+		password = []byte(opts.master_password)
+		zeroString(&opts.master_password)
 	}
 
 	// []byte(...) creates a copy of the string-bytes (strings are read-only)
@@ -98,7 +106,6 @@ func main() {
 	hasher.ZeroBytes()
 	zeroBytes(password, domain)
 
-	fmt.Println()
 	if err != nil {
 		exit(2, err)
 	}
@@ -106,7 +113,6 @@ func main() {
 	// fmt.Printf() might keep (unreachable) data in buffers around
 	os.Stdout.Write(generated)
 	zeroBytes(generated)
-	fmt.Println()
 }
 
 func usage() {
